@@ -926,7 +926,7 @@ write_error:
 }
 
 void
-ttyresize(int tw, int th)
+ttyresize(int tw, int th) // FOR WINDOW RESIZE
 {
 	struct winsize w;
 
@@ -1197,6 +1197,9 @@ tsetchar(Rune u, const Glyph *attr, int x, int y)
 
 	/*
 	 * The table is proudly stolen from rxvt.
+	 */
+
+	 /*And I stole this entire code from the team behind 'st'
 	 */
 	if (term.trantbl[term.charset] == CS_GRAPHIC0 &&
 	   BETWEEN(u, 0x41, 0x7e) && vt100_0[u - 0x41])
@@ -2641,7 +2644,7 @@ drawregion(int x1, int y1, int x2, int y2)
 	}
 }
 
-void
+void //NOTE: The main draw function
 draw(void)
 {
 	int cx = term.c.x, ocx = term.ocx, ocy = term.ocy;

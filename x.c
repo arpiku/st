@@ -8,12 +8,15 @@
 #include <time.h>
 #include <unistd.h>
 #include <libgen.h>
-#include <X11/Xatom.h>
-#include <X11/Xlib.h>
-#include <X11/cursorfont.h>
-#include <X11/keysym.h>
-#include <X11/Xft/Xft.h>
-#include <X11/XKBlib.h>
+
+// TODO: Replace these with wayland libraries, infact, perhaps make it compatible for both
+// TODO: Remove these comments
+#include <X11/Xatom.h> // Defines the types that can be used with X windowing system
+#include <X11/Xlib.h> // This is the main X11 lib
+#include <X11/cursorfont.h> // For rendering cool fonts
+#include <X11/keysym.h> //For knowing what the keyboard is saying
+#include <X11/Xft/Xft.h> // antialiased font rendering
+#include <X11/XKBlib.h> // For doing stuff that the keyboard is saying
 
 char *argv0;
 #include "arg.h"
@@ -97,7 +100,7 @@ typedef struct {
 	struct {
 		XIM xim;
 		XIC xic;
-		XPoint spot;
+		XPoint spot; // NOTE: This is a point (x,y), let's see where it points to !
 		XVaNestedList spotlist;
 	} ime;
 	Draw draw;
@@ -250,7 +253,7 @@ static char *opt_font  = NULL;
 static char *opt_io    = NULL;
 static char *opt_line  = NULL;
 static char *opt_name  = NULL;
-static char *opt_title = NULL;
+static char *opt_title = NULL; 
 
 static uint buttons; /* bit field of pressed buttons */
 
@@ -292,23 +295,45 @@ numlock(const Arg *dummy)
 	win.mode ^= MODE_NUMLOCK;
 }
 
+
+// The zooming leads to incorrect window size, the proportions get messed up
+// TODO: Remove all of this garbage debugging code, once things are working
+
 void
 zoom(const Arg *arg)
 {
 	Arg larg;
+	
+  // printf("Entering zoom function\n");
+  // printf("Initial arg->f: %f\n", arg->f);
 
 	larg.f = usedfontsize + arg->f;
+
+	// printf("Setting larg.f to: %f\n", larg.f);
+
 	zoomabs(&larg);
+
+  // printf("Exiting zoom function\n");
+
 }
 
 void
 zoomabs(const Arg *arg)
 {
+
+  printf("Entering zoomabs function\n");
+  printf("arg->f: %f\n", arg->f);
+
+  
 	xunloadfonts();
 	xloadfonts(usedfont, arg->f);
 	cresize(0, 0);
 	redraw();
-	xhints();
+	// xhints(); 
+
+	//TODO: Disabling above allows for a fine zoom ability, don't know why it was needed in the first place
+
+	printf("Exiting zoomabs function\n");
 }
 
 void
@@ -739,9 +764,9 @@ cresize(int width, int height)
 	col = MAX(1, col);
 	row = MAX(1, row);
 
-	tresize(col, row);
-	xresize(col, row);
-	ttyresize(win.tw, win.th);
+	tresize(col, row); //Internal Terminal resizing
+	xresize(col, row); //X window resizing
+	ttyresize(win.tw, win.th); // teletype resizing ?
 }
 
 void
@@ -859,12 +884,19 @@ xclear(int x1, int y1, int x2, int y2)
 void
 xhints(void)
 {
+
+	//NOTE: Fix this
 	XClassHint class = {opt_name ? opt_name : termname,
 	                    opt_class ? opt_class : termname};
+
+	// printf("%ld\n", sizeof(class) );
 	XWMHints wm = {.flags = InputHint, .input = 1};
 	XSizeHints *sizeh;
 
 	sizeh = XAllocSizeHints();
+
+	
+
 
 	sizeh->flags = PSize | PResizeInc | PBaseSize | PMinSize;
 	sizeh->height = win.h;
@@ -875,20 +907,23 @@ xhints(void)
 	sizeh->base_width = 2 * borderpx;
 	sizeh->min_height = win.ch + 2 * borderpx;
 	sizeh->min_width = win.cw + 2 * borderpx;
+
 	if (xw.isfixed) {
 		sizeh->flags |= PMaxSize;
 		sizeh->min_width = sizeh->max_width = win.w;
 		sizeh->min_height = sizeh->max_height = win.h;
 	}
 	if (xw.gm & (XValue|YValue)) {
-		sizeh->flags |= USPosition | PWinGravity;
-		sizeh->x = xw.l;
-		sizeh->y = xw.t;
-		sizeh->win_gravity = xgeommasktogravity(xw.gm);
+	 sizeh->flags |= USPosition | PWinGravity;
+	 sizeh->x = xw.l;
+	 sizeh->y = xw.t;
+	 sizeh->win_gravity = xgeommasktogravity(xw.gm); //NOTE: Disabling this didn't seem to do much
 	}
+
 
 	XSetWMProperties(xw.dpy, xw.win, NULL, NULL, NULL, 0, sizeh, &wm,
 			&class);
+
 	XFree(sizeh);
 }
 
@@ -1133,12 +1168,16 @@ xinit(int cols, int rows)
 	Cursor cursor;
 	Window parent;
 	pid_t thispid = getpid();
+
+
+	//TODO: use the pid in the main controller system
+	
 	XColor xmousefg, xmousebg;
 
-	if (!(xw.dpy = XOpenDisplay(NULL)))
+	if (!(xw.dpy = XOpenDisplay(NULL))) // NOTE: Gets the access to display
 		die("can't open display\n");
-	xw.scr = XDefaultScreen(xw.dpy);
-	xw.vis = XDefaultVisual(xw.dpy, xw.scr);
+	xw.scr = XDefaultScreen(xw.dpy); //Selects the screen
+	xw.vis = XDefaultVisual(xw.dpy, xw.scr); //XDefaultVisual(*display, int* screen number)
 
 	/* font */
 	if (!FcInit())
@@ -1170,6 +1209,8 @@ xinit(int cols, int rows)
 
 	if (!(opt_embed && (parent = strtol(opt_embed, NULL, 0))))
 		parent = XRootWindow(xw.dpy, xw.scr);
+
+	//NOTE: This is where the window gets created
 	xw.win = XCreateWindow(xw.dpy, parent, xw.l, xw.t,
 			win.w, win.h, 0, XDefaultDepth(xw.dpy, xw.scr), InputOutput,
 			xw.vis, CWBackPixel | CWBorderPixel | CWBitGravity
@@ -1693,15 +1734,23 @@ xfinishdraw(void)
 }
 
 void
-xximspot(int x, int y)
+xximspot(int x, int y) //NOTE: This thing only gets called once from st.c
 {
+
+	//NOTE: I am here
+	printf("Inside xximspot");
 	if (xw.ime.xic == NULL)
 		return;
 
-	xw.ime.spot.x = borderpx + x * win.cw;
+  //NOTE: This looks important!
+	xw.ime.spot.x = borderpx +50+ x * win.cw;
 	xw.ime.spot.y = borderpx + (y + 1) * win.ch;
 
 	XSetICValues(xw.ime.xic, XNPreeditAttributes, xw.ime.spotlist, NULL);
+	//Returns inputs context
+	//XSetICValues can generate BadAtom, BadColor, BadCursor, BadPixmap, and BadWindow errors.
+
+
 }
 
 void
@@ -1734,6 +1783,10 @@ xsetpointermotion(int set)
 void
 xsetmode(int set, unsigned int flags)
 {
+
+	//NOTE: Remove this
+	printf("xsetmode");
+
 	int mode = win.mode;
 	MODBIT(win.mode, set, flags);
 	if ((win.mode & MODE_REVERSE) != (mode & MODE_REVERSE))
@@ -1743,6 +1796,8 @@ xsetmode(int set, unsigned int flags)
 int
 xsetcursor(int cursor)
 {
+	//NOTE: Remove this
+	printf("xsetcursor");
 	if (!BETWEEN(cursor, 0, 7)) /* 7: st extension */
 		return 1;
 	win.cursor = cursor;
@@ -1752,7 +1807,7 @@ xsetcursor(int cursor)
 void
 xseturgency(int add)
 {
-	XWMHints *h = XGetWMHints(xw.dpy, xw.win);
+	XWMHints *h = XGetWMHints(xw.dpy, xw.win); // Returns (*display, Window w)
 
 	MODBIT(h->flags, add, XUrgencyHint);
 	XSetWMHints(xw.dpy, xw.win, h);
@@ -2037,7 +2092,7 @@ int
 main(int argc, char *argv[])
 {
 	xw.l = xw.t = 0;
-	xw.isfixed = False;
+	xw.isfixed = False; // Can be toggle to lock the position of the window
 	xsetcursor(cursorshape);
 
 	ARGBEGIN {
@@ -2088,7 +2143,7 @@ run:
 	if (argc > 0) /* eat all remaining arguments */
 		opt_cmd = argv;
 
-	if (!opt_title)
+	if (!opt_title) // Optional Title can be set via the command
 		opt_title = (opt_line || !opt_cmd) ? "st" : opt_cmd[0];
 
 	setlocale(LC_CTYPE, "");

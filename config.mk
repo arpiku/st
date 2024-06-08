@@ -13,6 +13,8 @@ X11LIB = /usr/X11R6/lib
 PKG_CONFIG = pkg-config
 
 # includes and libs
+# TODO: Add wayland support, include neccessary headers
+
 INCS = -I$(X11INC) \
        `$(PKG_CONFIG) --cflags fontconfig` \
        `$(PKG_CONFIG) --cflags freetype2`

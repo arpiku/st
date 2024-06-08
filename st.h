@@ -87,7 +87,7 @@ void sendbreak(const Arg *);
 void toggleprinter(const Arg *);
 
 int tattrset(int);
-void tnew(int, int);
+void tnew(int, int); // TODO: Look into this function
 void tresize(int, int);
 void tsetdirtattr(int);
 void ttyhangup(void);
@@ -111,9 +111,9 @@ void *xmalloc(size_t);
 void *xrealloc(void *, size_t);
 char *xstrdup(const char *);
 
-/* config.h globals */
+/* config.h globals */ 
 extern char *utmp;
-extern char *scroll;
+extern char *scroll; //NOTE: Maybe use these for control
 extern char *stty_args;
 extern char *vtiden;
 extern wchar_t *worddelimiters;
